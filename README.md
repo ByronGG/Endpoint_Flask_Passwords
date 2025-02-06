@@ -1,5 +1,8 @@
 # Endpoint Flask Password Generator 
 
+<h3 align="left">Lenguajes y Herramientas:</h3>
+<p align="left"> <a href="https://flask.palletsprojects.com/" target="_blank" rel="noreferrer"> <img src="https://www.vectorlogo.zone/logos/pocoo_flask/pocoo_flask-icon.svg" alt="flask" width="40" height="40"/> </a> <a href="https://postman.com" target="_blank" rel="noreferrer"> <img src="https://www.vectorlogo.zone/logos/getpostman/getpostman-icon.svg" alt="postman" width="40" height="40"/> </a> <a href="https://www.python.org" target="_blank" rel="noreferrer"> <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/python/python-original.svg" alt="python" width="40" height="40"/> </a> </p>
+
 Este proyecto es una API RESTful creada con Flask para generar contraseñas seguras y realizar autenticación utilizando tokens JWT. La API permite la generación de contraseñas personalizadas y protegidas por autenticación.
 
 ## Funcionalidades
@@ -7,6 +10,7 @@ Este proyecto es una API RESTful creada con Flask para generar contraseñas segu
 - **Generación de contraseñas seguras**: Genera contraseñas de longitud personalizada.
 - **Autenticación**: Uso de tokens JWT para proteger los endpoints.
 - **Límites**: Se establece una longitud máxima de 128 caracteres para las contraseñas generadas.
+
 
 ## Requisitos
 
