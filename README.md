@@ -84,19 +84,44 @@ Respuesta esperada en el body-json
 GET /generate-password
 Genera un contraseña segura con longitud personalizada.
 Parámetros de consulta:
-- **length:** (opcional) Longitud de la contraseña a generar (máximo 128 caracteres).
+- **length:** (opcional) Longitud de la contraseña a generar (minimo 8 hasta un máximo 128 caracteres).
 Ejemplo de solicitud:
 
 ```bash
-curl -X GET "http://127.0.0.1:5000/generate-password?length=16" \
--H "Authorization: Bearer tu_token_jwt_aqui"
+GET http://127.0.0.1:5000/generate-password?length=16
+Headers "Authorization: Bearer tu_token_jwt_aqui"
 ```
-Respuesta:
+Respuesta esperada:
 ```json
 {
-  "password": "TuContraseñaGenerada123!"
+    "contains_lowercase": true,
+    "contains_numbers": true,
+    "contains_special": true,
+    "contains_uppercase": true,
+    "length": 12,
+    "password": "{1i;m;Wz=//U"
 }
 ```
+
+## Caracteristicas de seguridad implementadas
+Rate Limiting:
+- 200 peticiones por día
+- 50 peticiones por hora
+- 10 peticiones por minuto para la generación de contraseñas
+## Validaciones de Contraseña:
+- Mínimo 8 caracteres
+- Máximo 128 caracteres
+- Al menos una letra mayúscula
+- Al menos una letra minúscula
+- Al menos un número
+- Al menos un carácter especial
+## Seguridad JWT:
+- Los tokens expiran después de 1 hora
+- Todas las peticiones de generación de contraseñas requieren autenticación
+## Códigos de Error:
+- 400: Parámetros inválidos (por ejemplo, longitud fuera de rango)
+- 401: No autorizado (token inválido o expirado)
+- 429: Demasiadas peticiones (rate limit excedido)
 
 ## Contribuciones
 Las contribuciones son bienvenidas, este es un pequeño proyecto de un desarrollador Jr. que acaba de empezar su trayectoria 🙂.
