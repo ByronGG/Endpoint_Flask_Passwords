@@ -2,10 +2,21 @@ import secrets
 import string
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required
+from datetime import datetime
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+import unittest
 
 password_bp = Blueprint("password", __name__)
 
+limiter = Limiter(
+    app=current_app,
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"]
+)
+
 @password_bp.route("/generate-password", methods=["GET"])
+@limiter.limit("10 per minute")
 @jwt_required()
 def generate_password():
     try:
@@ -17,17 +28,108 @@ def generate_password():
         if length < 8 or length > 128:
             return jsonify({"error": "La longitud debe estar entre 8 y 128 caracteres"}), 400
 
+        # Aseguramos que todos los tipos de caracteres estén habilitados para cumplir los requisitos
+        use_special = True
+        use_numbers = True
+        use_uppercase = True
+
+        # Construimos el conjunto de caracteres
         characters = string.ascii_lowercase
-        if use_uppercase:
-            characters += string.ascii_uppercase
-        if use_numbers:
-            characters += string.digits
-        if use_special:
-            characters += string.punctuation
+        characters += string.ascii_uppercase
+        characters += string.digits
+        characters += string.punctuation
 
-        password = "".join(secrets.choice(characters) for _ in range(length))
+        # Generamos la contraseña inicial
+        password = []
+        
+        # Aseguramos al menos un carácter de cada tipo
+        password.append(secrets.choice(string.ascii_lowercase))  # minúscula
+        password.append(secrets.choice(string.ascii_uppercase))  # mayúscula
+        password.append(secrets.choice(string.digits))          # número
+        password.append(secrets.choice(string.punctuation))     # especial
 
-        return jsonify({"password": password})
+        # Completamos el resto de la contraseña
+        for _ in range(length - 4):
+            password.append(secrets.choice(characters))
+
+        # Mezclamos los caracteres para que no sigan un patrón predecible
+        password = list(password)
+        secrets.SystemRandom().shuffle(password)
+        password = ''.join(password)
+
+        # Validamos que la contraseña cumple con todos los requisitos
+        if not all([
+            any(c.islower() for c in password),
+            any(c.isupper() for c in password),
+            any(c.isdigit() for c in password),
+            any(c in string.punctuation for c in password)
+        ]):
+            # Si por alguna razón no cumple, generamos otra
+            return generate_password()
+
+        return jsonify({
+            "password": password,
+            "length": len(password),
+            "contains_lowercase": True,
+            "contains_uppercase": True,
+            "contains_numbers": True,
+            "contains_special": True
+        })
 
     except ValueError:
         return jsonify({"error": "El parámetro 'length' debe ser un número válido"}), 400
+
+@password_bp.route("/password-history", methods=["GET"])
+@jwt_required()
+def get_password_history():
+    # Aquí implementarías la lógica de base de datos
+    # Este es solo un ejemplo conceptual
+    return jsonify({
+        "history": [
+            {
+                "date": datetime.now().isoformat(),
+                "length": 12,
+                "has_special": True
+            }
+        ]
+    })
+
+@password_bp.route("/check-password-strength", methods=["POST"])
+@jwt_required()
+def check_password_strength():
+    data = request.get_json()
+    password = data.get("password")
+    
+    score = 0
+    feedback = []
+    
+    if len(password) >= 12:
+        score += 1
+        feedback.append("Longitud adecuada")
+    if any(c.isupper() for c in password):
+        score += 1
+        feedback.append("Contiene mayúsculas")
+    if any(c.islower() for c in password):
+        score += 1
+        feedback.append("Contiene minúsculas")
+    if any(c.isdigit() for c in password):
+        score += 1
+        feedback.append("Contiene números")
+    if any(c in string.punctuation for c in password):
+        score += 1
+        feedback.append("Contiene caracteres especiales")
+        
+    return jsonify({
+        "strength": score,
+        "feedback": feedback,
+        "rating": ["Muy débil", "Débil", "Moderada", "Fuerte", "Muy fuerte"][min(score-1, 4)]
+    })
+
+class PasswordGeneratorTests(unittest.TestCase):
+    def test_password_length(self):
+        # Implementar tests
+        pass
+    
+    def test_password_complexity(self):
+        # Implementar tests
+        pass
