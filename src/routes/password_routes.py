@@ -1,6 +1,6 @@
 import secrets
 import string
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
 from datetime import datetime
 from flask_limiter import Limiter
@@ -9,75 +9,72 @@ import unittest
 
 password_bp = Blueprint("password", __name__)
 
-limiter = Limiter(
-    app=current_app,
-    key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"]
-)
+def init_limiter(limiter):
+    @password_bp.route("/generate-password", methods=["GET"])
+    @limiter.limit("10 per minute")
+    @jwt_required()
+    def generate_password():
+        try:
+            length = int(request.args.get("length", 12))
+            use_special = request.args.get("special_chars", "true").lower() == "true"
+            use_numbers = request.args.get("numbers", "true").lower() == "true"
+            use_uppercase = request.args.get("uppercase", "true").lower() == "true"
 
-@password_bp.route("/generate-password", methods=["GET"])
-@limiter.limit("10 per minute")
-@jwt_required()
-def generate_password():
-    try:
-        length = int(request.args.get("length", 12))
-        use_special = request.args.get("special_chars", "true").lower() == "true"
-        use_numbers = request.args.get("numbers", "true").lower() == "true"
-        use_uppercase = request.args.get("uppercase", "true").lower() == "true"
+            if length < 8 or length > 128:
+                return jsonify({"error": "La longitud debe estar entre 8 y 128 caracteres"}), 400
 
-        if length < 8 or length > 128:
-            return jsonify({"error": "La longitud debe estar entre 8 y 128 caracteres"}), 400
+            # Aseguramos que todos los tipos de caracteres estén habilitados
+            use_special = True
+            use_numbers = True
+            use_uppercase = True
 
-        # Aseguramos que todos los tipos de caracteres estén habilitados para cumplir los requisitos
-        use_special = True
-        use_numbers = True
-        use_uppercase = True
+            # Construimos el conjunto de caracteres
+            characters = string.ascii_lowercase
+            characters += string.ascii_uppercase
+            characters += string.digits
+            characters += string.punctuation
 
-        # Construimos el conjunto de caracteres
-        characters = string.ascii_lowercase
-        characters += string.ascii_uppercase
-        characters += string.digits
-        characters += string.punctuation
+            # Generamos la contraseña inicial
+            password = []
+            
+            # Aseguramos al menos un carácter de cada tipo
+            password.append(secrets.choice(string.ascii_lowercase))
+            password.append(secrets.choice(string.ascii_uppercase))
+            password.append(secrets.choice(string.digits))
+            password.append(secrets.choice(string.punctuation))
 
-        # Generamos la contraseña inicial
-        password = []
-        
-        # Aseguramos al menos un carácter de cada tipo
-        password.append(secrets.choice(string.ascii_lowercase))  # minúscula
-        password.append(secrets.choice(string.ascii_uppercase))  # mayúscula
-        password.append(secrets.choice(string.digits))          # número
-        password.append(secrets.choice(string.punctuation))     # especial
+            # Completamos el resto de la contraseña
+            for _ in range(length - 4):
+                password.append(secrets.choice(characters))
 
-        # Completamos el resto de la contraseña
-        for _ in range(length - 4):
-            password.append(secrets.choice(characters))
+            # Mezclamos los caracteres
+            password = list(password)
+            secrets.SystemRandom().shuffle(password)
+            password = ''.join(password)
 
-        # Mezclamos los caracteres para que no sigan un patrón predecible
-        password = list(password)
-        secrets.SystemRandom().shuffle(password)
-        password = ''.join(password)
+            # Validamos que la contraseña cumple con todos los requisitos
+            if not all([
+                any(c.islower() for c in password),
+                any(c.isupper() for c in password),
+                any(c.isdigit() for c in password),
+                any(c in string.punctuation for c in password)
+            ]):
+                # Si no cumple, generamos otra
+                return generate_password()
 
-        # Validamos que la contraseña cumple con todos los requisitos
-        if not all([
-            any(c.islower() for c in password),
-            any(c.isupper() for c in password),
-            any(c.isdigit() for c in password),
-            any(c in string.punctuation for c in password)
-        ]):
-            # Si por alguna razón no cumple, generamos otra
-            return generate_password()
+            return jsonify({
+                "password": password,
+                "length": len(password),
+                "contains_lowercase": True,
+                "contains_uppercase": True,
+                "contains_numbers": True,
+                "contains_special": True
+            })
 
-        return jsonify({
-            "password": password,
-            "length": len(password),
-            "contains_lowercase": True,
-            "contains_uppercase": True,
-            "contains_numbers": True,
-            "contains_special": True
-        })
+        except ValueError:
+            return jsonify({"error": "El parámetro 'length' debe ser un número válido"}), 400
 
-    except ValueError:
-        return jsonify({"error": "El parámetro 'length' debe ser un número válido"}), 400
+    return password_bp
 
 @password_bp.route("/password-history", methods=["GET"])
 @jwt_required()
