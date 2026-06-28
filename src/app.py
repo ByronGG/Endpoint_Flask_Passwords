@@ -1,15 +1,18 @@
 import os
+from dotenv import load_dotenv
+
+# Carga las variables del .env ANTES de importar los blueprints: auth_routes
+# construye USERS_DB a partir de APP_USERS en tiempo de importación, así que el
+# .env debe estar cargado primero o el diccionario quedaría vacío.
+load_dotenv()
+
 from flask import Flask
 from flask_jwt_extended import JWTManager
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from dotenv import load_dotenv
 from models import db
 from routes.password_routes import password_bp, init_limiter
 from routes.auth_routes import auth_bp
-
-# Carga las variables definidas en el archivo .env (si existe)
-load_dotenv()
 
 app = Flask(__name__)
 
